@@ -2,14 +2,20 @@ package main
 
 import (
 	"Nand2Tetris/class"
-	"fmt"
+	"Nand2Tetris/enum"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
 func main() {
-	inputFile, err := os.Open("test.vm")
+	arg := os.Args[1]
+
+	if arg == "" {
+		panic("script requires a filename as an argument")
+	}
+
+	inputFile, err := os.Open(arg)
 
 	if err != nil {
 		panic(err)
@@ -27,28 +33,45 @@ func main() {
 
 	codeWriter := class.NewCodeWriter(outputFile)
 
-	_, err = parser.AdvanceNextCommand()
-	if err != nil {
-		panic(err)
-	}
+	for {
+		hasCommand, err := parser.AdvanceNextCommand()
+		if err != nil {
+			panic(err)
+		}
+		if !hasCommand {
+			break
+		}
 
-	fmt.Println("command: ", parser.CurrentCommand)
+		commandType, err := parser.CommandType()
+		if err != nil {
+			panic(err)
+		}
 
-	commandType, _ := parser.CommandType()
+		if commandType == enum.C_POP || commandType == enum.C_PUSH {
+			arg1, err := parser.Arg1()
+			if err != nil {
+				panic(err)
+			}
+			arg2, err := parser.Arg2()
+			if err != nil {
+				panic(err)
+			}
 
-	fmt.Println("command type : ", commandType)
+			err = codeWriter.WritePushPop(commandType, arg1, arg2)
+			if err != nil {
+				panic(err)
+			}
+		} else if commandType == enum.C_ARITHMETIC {
+			arg1, err := parser.Arg1()
+			if err != nil {
+				panic(err)
+			}
 
-	arg1, _ := parser.Arg1()
-
-	fmt.Println("arg1 : ", arg1)
-
-	arg2, _ := parser.Arg2()
-
-	fmt.Println("arg2 : ", arg2)
-
-	err = codeWriter.WritePushPop(commandType, arg1, arg2)
-	if err != nil {
-		panic(err)
+			err = codeWriter.WriteArithmetic(arg1)
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
 
 	err = codeWriter.Close()

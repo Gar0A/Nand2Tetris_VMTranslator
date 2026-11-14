@@ -52,13 +52,13 @@ func (cw *CodeWriter) WritePushPop(commandType enum.CommandType, segment string,
 
 		switch segment {
 		case "local":
-			pushHeader = fmt.Sprintf("\n@LCL\nD=A\n@%d\nA=D+A\nD=M", index)
+			pushHeader = fmt.Sprintf("\n@LCL\nD=M\n@%d\nA=D+A\nD=M", index)
 		case "argument":
-			pushHeader = fmt.Sprintf("\n@ARG\nD=A\n@%d\nA=D+A\nD=M", index)
+			pushHeader = fmt.Sprintf("\n@ARG\nD=M\n@%d\nA=D+A\nD=M", index)
 		case "this":
-			pushHeader = fmt.Sprintf("\n@THIS\nD=A\n@%d\nA=D+A\nD=M", index)
+			pushHeader = fmt.Sprintf("\n@THIS\nD=M\n@%d\nA=D+A\nD=M", index)
 		case "that":
-			pushHeader = fmt.Sprintf("\n@THAT\nD=A\n@%i\nA=D+A\nD=M", index)
+			pushHeader = fmt.Sprintf("\n@THAT\nD=M\n@%d\nA=D+A\nD=M", index)
 		case "constant":
 			pushHeader = fmt.Sprintf("\n@%d\nD=A", index)
 		case "static":
@@ -92,13 +92,13 @@ func (cw *CodeWriter) WritePushPop(commandType enum.CommandType, segment string,
 
 		switch segment {
 		case "local":
-			popHeader = fmt.Sprintf("\n@LCL\nD=A\n@%d\nA=D+A\nD=A\n@R13\nM=D\n@SP\nA=M\nD=M\n@R13\nA=M", index)
+			popHeader = fmt.Sprintf("\n@LCL\nD=M\n@%d\nA=D+A\nD=A\n@R13\nM=D\n@SP\nA=M\nD=M\n@R13\nA=M", index)
 		case "argument":
-			popHeader = fmt.Sprintf("\n@ARG\nD=A\n@%d\nA=D+A\nD=A\n@R13\nM=D\n@SP\nA=M\nD=M\n@R13\nA=M", index)
+			popHeader = fmt.Sprintf("\n@ARG\nD=M\n@%d\nA=D+A\nD=A\n@R13\nM=D\n@SP\nA=M\nD=M\n@R13\nA=M", index)
 		case "this":
-			popHeader = fmt.Sprintf("\n@THIS\nD=A\n@%d\nA=D+A\nD=A\n@R13\nM=D\n@SP\nA=M\nD=M\n@R13\nA=M", index)
+			popHeader = fmt.Sprintf("\n@THIS\nD=M\n@%d\nA=D+A\nD=A\n@R13\nM=D\n@SP\nA=M\nD=M\n@R13\nA=M", index)
 		case "that":
-			popHeader = fmt.Sprintf("\n@THAT\nD=A\n@%d\nA=D+A\nD=A\n@R13\nM=D\n@SP\nA=M\nD=M\n@R13\nA=M", index)
+			popHeader = fmt.Sprintf("\n@THAT\nD=M\n@%d\nA=D+A\nD=A\n@R13\nM=D\n@SP\nA=M\nD=M\n@R13\nA=M", index)
 		case "static":
 			popHeader = fmt.Sprintf("\n@SP\nA=M\nD=M\n@%s.%d", cw.fileName, index)
 		case "temp":
@@ -126,8 +126,6 @@ func (cw *CodeWriter) WritePushPop(commandType enum.CommandType, segment string,
 		return fmt.Errorf("forbidden command %d", commandType)
 	}
 
-	fmt.Print(code.String())
-
 	_, err := cw.writer.WriteString(code.String())
 	if err != nil {
 		return err
@@ -150,15 +148,15 @@ func (cw *CodeWriter) WriteArithmetic(command string) error {
 		arithmeticCode = "\n@R5\nM=-M"
 	case "eq":
 		count := cw.arithmeticCount[command]
-		arithmeticCode = fmt.Sprintf("\n@R6\nD=M\n@R5\nD=D-M\n@EQ_%d\nD;JEQ\nD=0\n@EQ_%d_END\nA;JMP\n(EQ_%d)\nD=1\n(EQ_%d_END)\n@R5\nM=D", count, count, count, count)
+		arithmeticCode = fmt.Sprintf("\n@R6\nD=M\n@R5\nD=D-M\n@EQ_%d\nD;JEQ\nD=0\n@EQ_%d_END\nA;JMP\n(EQ_%d)\nD=-1\n(EQ_%d_END)\n@R5\nM=D", count, count, count, count)
 		cw.arithmeticCount[command]++
 	case "gt":
 		count := cw.arithmeticCount[command]
-		arithmeticCode = fmt.Sprintf("\n@R6\nD=M\n@R5\nD=D-M\n@GT_%d\nD;JGT\nD=0\n@GT_%d_END\nA;JMP\n(GT_%d)\nD=1\n(GT_%d_END)\n@R5\nM=D", count, count, count, count)
+		arithmeticCode = fmt.Sprintf("\n@R6\nD=M\n@R5\nD=D-M\n@GT_%d\nD;JGT\nD=0\n@GT_%d_END\nA;JMP\n(GT_%d)\nD=-1\n(GT_%d_END)\n@R5\nM=D", count, count, count, count)
 		cw.arithmeticCount[command]++
 	case "lt":
 		count := cw.arithmeticCount[command]
-		arithmeticCode = fmt.Sprintf("\n@R6\nD=M\n@R5\nD=D-M\n@LT_%d\nD;JLT\nD=0\n@LT_%d_END\nA;JMP\n(LT_%d)\nD=1\n(LT_%d_END)\n@R5\nM=D", count, count, count, count)
+		arithmeticCode = fmt.Sprintf("\n@R6\nD=M\n@R5\nD=D-M\n@LT_%d\nD;JLT\nD=0\n@LT_%d_END\nA;JMP\n(LT_%d)\nD=-1\n(LT_%d_END)\n@R5\nM=D", count, count, count, count)
 		cw.arithmeticCount[command]++
 	case "and":
 		arithmeticCode = "\n@R6\nD=M\n@R5\nM=D&M"

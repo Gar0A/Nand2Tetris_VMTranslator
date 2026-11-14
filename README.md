@@ -1,0 +1,1 @@
+Command to run the script : `go run main.go fileName.vm`

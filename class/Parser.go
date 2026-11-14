@@ -21,7 +21,7 @@ type Parsers interface {
 // Parser Struct for the VM code parser
 type Parser struct {
 	scanner        *bufio.Scanner
-	CurrentCommand string
+	currentCommand string
 	lineCount      int
 }
 
@@ -38,7 +38,7 @@ func (p *Parser) AdvanceNextCommand() (bool, error) {
 	rPushConstant := regexp.MustCompile("^\\s*push\\s+constant\\s+(\\d+)(?:\\s*$|\\s+(?://+)+)")
 	rPushPopTemp := regexp.MustCompile("^\\s*(pop|push)\\s+temp\\s+([0-8])(?:\\s*$|\\s+(?://+)+)")
 	rPushPopPointer := regexp.MustCompile("^\\s*(pop|push)\\s+pointer\\s+([0-1])(?:\\s*$|\\s+(?://+)+)")
-	rPushPopRest := regexp.MustCompile("^\\s*(pop|push)\\s+(local|argument|this|that|static)\\s+([0-1])(?:\\s*$|\\s+(?://+)+)")
+	rPushPopRest := regexp.MustCompile("^\\s*(pop|push)\\s+(local|argument|this|that|static)\\s+(\\d+)(?:\\s*$|\\s+(?://+)+)")
 
 	if !p.scanner.Scan() {
 		return false, nil
@@ -53,25 +53,25 @@ func (p *Parser) AdvanceNextCommand() (bool, error) {
 		return p.AdvanceNextCommand()
 	} else if rArithmetic.MatchString(line) {
 		parts := rArithmetic.FindStringSubmatch(line)
-		p.CurrentCommand = parts[1]
+		p.currentCommand = parts[1]
 		return true, nil
 	} else if rPushConstant.MatchString(line) {
 		parts := rPushConstant.FindStringSubmatch(line)
 		n, _ := strconv.Atoi(parts[1])
-		p.CurrentCommand = fmt.Sprintf("push constant %d", n)
+		p.currentCommand = fmt.Sprintf("push constant %d", n)
 		return true, nil
 	} else if rPushPopTemp.MatchString(line) {
 		parts := rPushPopTemp.FindStringSubmatch(line)
-		p.CurrentCommand = fmt.Sprintf("%s temp %s", parts[1], parts[2])
+		p.currentCommand = fmt.Sprintf("%s temp %s", parts[1], parts[2])
 		return true, nil
 	} else if rPushPopPointer.MatchString(line) {
 		parts := rPushPopPointer.FindStringSubmatch(line)
-		p.CurrentCommand = fmt.Sprintf("%s pointer %s", parts[1], parts[2])
+		p.currentCommand = fmt.Sprintf("%s pointer %s", parts[1], parts[2])
 		return true, nil
 	} else if rPushPopRest.MatchString(line) {
 		parts := rPushPopRest.FindStringSubmatch(line)
 		n, _ := strconv.Atoi(parts[3])
-		p.CurrentCommand = fmt.Sprintf("%s %s %d", parts[1], parts[2], n)
+		p.currentCommand = fmt.Sprintf("%s %s %d", parts[1], parts[2], n)
 		return true, nil
 	}
 	return false, fmt.Errorf("error in line %d: unknown command : %q", p.lineCount, line)
@@ -81,7 +81,7 @@ func (p *Parser) CommandType() (enum.CommandType, error) {
 	rArithmetic := regexp.MustCompile("^(?:add|sub|neg|eq|gt|lt|and|or|not)")
 	rPushPop := regexp.MustCompile("^(pop|push)")
 
-	command := p.CurrentCommand
+	command := p.currentCommand
 
 	if rArithmetic.MatchString(command) {
 		return enum.C_ARITHMETIC, nil
@@ -98,7 +98,7 @@ func (p *Parser) CommandType() (enum.CommandType, error) {
 }
 
 func (p *Parser) Arg1() (string, error) {
-	command := p.CurrentCommand
+	command := p.currentCommand
 	commandType, err := p.CommandType()
 
 	if err != nil {
@@ -116,7 +116,7 @@ func (p *Parser) Arg1() (string, error) {
 }
 
 func (p *Parser) Arg2() (int, error) {
-	command := p.CurrentCommand
+	command := p.currentCommand
 	commandType, err := p.CommandType()
 
 	if err != nil {
