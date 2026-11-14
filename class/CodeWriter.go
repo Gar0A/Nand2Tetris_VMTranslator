@@ -17,14 +17,20 @@ type CodeWriters interface {
 
 // CodeWriter Struct for the VM code writer
 type CodeWriter struct {
-	writer   *bufio.Writer
-	fileName string
+	writer          *bufio.Writer
+	fileName        string
+	arithmeticCount map[string]int
 }
 
 // NewCodeWriter Constructor for the parser struct
 func NewCodeWriter(f *os.File) CodeWriter {
 	writer := bufio.NewWriter(f)
-	return CodeWriter{writer: writer, fileName: strings.TrimSuffix(f.Name(), filepath.Ext(f.Name()))}
+	arithmeticCount := map[string]int{
+		"eq": 0,
+		"gt": 0,
+		"lt": 0,
+	}
+	return CodeWriter{writer, strings.TrimSuffix(f.Name(), filepath.Ext(f.Name())), arithmeticCount}
 }
 
 func (cw *CodeWriter) WritePushPop(commandType enum.CommandType, segment string, index int) error {
@@ -123,6 +129,74 @@ func (cw *CodeWriter) WritePushPop(commandType enum.CommandType, segment string,
 	fmt.Print(code.String())
 
 	_, err := cw.writer.WriteString(code.String())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cw *CodeWriter) WriteArithmetic(command string) error {
+	var code strings.Builder
+	code.WriteString(fmt.Sprintf("\n// %s", command))
+
+	arithmeticCode := ""
+	switch command {
+	case "add":
+		arithmeticCode = "\n@R6\nD=M\n@R5\nM=D+M"
+	case "sub":
+		arithmeticCode = "\n@R6\nD=M\n@R5\nM=D-M"
+	case "neg":
+		arithmeticCode = "\n@R5\nM=-M"
+	case "eq":
+		count := cw.arithmeticCount[command]
+		arithmeticCode = fmt.Sprintf("\n@R6\nD=M\n@R5\nD=D-M\n@EQ_%d\nD;JEQ\nD=0\n@EQ_%d_END\nA;JMP\n(EQ_%d)\nD=1\n(EQ_%d_END)\n@R5\nM=D", count, count, count, count)
+		cw.arithmeticCount[command]++
+	case "gt":
+		count := cw.arithmeticCount[command]
+		arithmeticCode = fmt.Sprintf("\n@R6\nD=M\n@R5\nD=D-M\n@GT_%d\nD;JGT\nD=0\n@GT_%d_END\nA;JMP\n(GT_%d)\nD=1\n(GT_%d_END)\n@R5\nM=D", count, count, count, count)
+		cw.arithmeticCount[command]++
+	case "lt":
+		count := cw.arithmeticCount[command]
+		arithmeticCode = fmt.Sprintf("\n@R6\nD=M\n@R5\nD=D-M\n@LT_%d\nD;JLT\nD=0\n@LT_%d_END\nA;JMP\n(LT_%d)\nD=1\n(LT_%d_END)\n@R5\nM=D", count, count, count, count)
+		cw.arithmeticCount[command]++
+	case "and":
+		arithmeticCode = "\n@R6\nD=M\n@R5\nM=D&M"
+	case "or":
+		arithmeticCode = "\n@R6\nD=M\n@R5\nM=D|M"
+	case "not":
+		arithmeticCode = "\n@R5\nM=!M"
+	}
+
+	if arithmeticCode != "" {
+		code.WriteString(arithmeticCode)
+	} else {
+		return fmt.Errorf("error with %s command", command)
+	}
+
+	if command == "neg" || command == "not" {
+		err := cw.WritePushPop(enum.C_POP, "temp", 0)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := cw.WritePushPop(enum.C_POP, "temp", 0)
+		if err != nil {
+			return err
+		}
+
+		err = cw.WritePushPop(enum.C_POP, "temp", 1)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err := cw.writer.WriteString(code.String())
+	if err != nil {
+		return err
+	}
+
+	err = cw.WritePushPop(enum.C_PUSH, "temp", 0)
 	if err != nil {
 		return err
 	}
