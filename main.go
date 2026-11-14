@@ -25,4 +25,7 @@ func main() {
 
 	fmt.Println("command: ", parser.CurrentCommand)
 
+	commandType, _ := parser.CommandType()
+
+	fmt.Println("command type : ", commandType)
 }

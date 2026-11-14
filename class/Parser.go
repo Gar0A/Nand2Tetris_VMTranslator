@@ -55,15 +55,15 @@ func (p *Parser) AdvanceNextCommand() (bool, error) {
 	} else if rPushConstant.MatchString(line) {
 		parts := rPushConstant.FindStringSubmatch(line)
 		n, _ := strconv.Atoi(parts[1])
-		p.CurrentCommand = fmt.Sprintf("pop constant %d", n)
+		p.CurrentCommand = fmt.Sprintf("push constant %d", n)
 		return true, nil
 	} else if rPushPopTemp.MatchString(line) {
 		parts := rPushPopTemp.FindStringSubmatch(line)
-		p.CurrentCommand = fmt.Sprintf("%s constant %d", parts[1], parts[2])
+		p.CurrentCommand = fmt.Sprintf("%s temp %s", parts[1], parts[2])
 		return true, nil
 	} else if rPushPopPointer.MatchString(line) {
 		parts := rPushPopPointer.FindStringSubmatch(line)
-		p.CurrentCommand = fmt.Sprintf("%s pointer %d", parts[1], parts[2])
+		p.CurrentCommand = fmt.Sprintf("%s pointer %s", parts[1], parts[2])
 		return true, nil
 	} else if rPushPopRest.MatchString(line) {
 		parts := rPushPopRest.FindStringSubmatch(line)
@@ -72,4 +72,24 @@ func (p *Parser) AdvanceNextCommand() (bool, error) {
 		return true, nil
 	}
 	return false, fmt.Errorf("error in line %d: unknown command : %q", p.lineCount, line)
+}
+
+func (p *Parser) CommandType() (enum.CommandType, error) {
+	rArithmetic := regexp.MustCompile("^(?:add|sub|neg|eq|gt|lt|and|or|not)")
+	rPushPop := regexp.MustCompile("^(pop|push)")
+
+	command := p.CurrentCommand
+
+	if rArithmetic.MatchString(command) {
+		return enum.C_ARITHMETIC, nil
+	} else if rPushPop.MatchString(command) {
+		parts := rPushPop.FindStringSubmatch(command)
+		if parts[1] == "pop" {
+			return enum.C_POP, nil
+		} else if parts[1] == "push" {
+			return enum.C_PUSH, nil
+		}
+	}
+
+	return enum.C_UNKNOWN, fmt.Errorf("error in line %d: unknown command type : %q", p.lineCount, command)
 }

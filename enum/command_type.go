@@ -4,7 +4,8 @@ package enum
 type CommandType int8
 
 const (
-	C_ARITHMETIC CommandType = iota
+	C_UNKNOWN CommandType = iota
+	C_ARITHMETIC
 	C_PUSH
 	C_POP
 	C_LABEL
