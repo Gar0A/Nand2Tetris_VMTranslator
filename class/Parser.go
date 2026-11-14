@@ -12,10 +12,10 @@ import (
 
 // Parsers Interface for the VM code parser
 type Parsers interface {
-	AdvanceNextCommand() bool
-	CommandType() enum.CommandType
-	Arg1() string
-	Arg2() string
+	AdvanceNextCommand() (bool, error)
+	CommandType() (enum.CommandType, error)
+	Arg1() (string, error)
+	Arg2() (int, error)
 }
 
 // Parser Struct for the VM code parser
@@ -46,6 +46,8 @@ func (p *Parser) AdvanceNextCommand() (bool, error) {
 	p.lineCount++
 
 	line := p.scanner.Text()
+
+	line = strings.ToLower(line)
 
 	if rWhitespaceLine.MatchString(line) {
 		return p.AdvanceNextCommand()

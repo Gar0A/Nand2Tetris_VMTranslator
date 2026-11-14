@@ -4,19 +4,28 @@ import (
 	"Nand2Tetris/class"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 func main() {
-	myfile, err := os.Open("test.vm")
+	inputFile, err := os.Open("test.vm")
 
 	if err != nil {
-		fmt.Println("Error opening file:", err)
-		return
+		panic(err)
 	}
 
-	defer myfile.Close()
+	defer inputFile.Close()
 
-	parser := class.NewParser(myfile)
+	outputFile, err := os.Create(strings.TrimSuffix(inputFile.Name(), filepath.Ext(inputFile.Name())) + ".asm")
+	if err != nil {
+		panic(err)
+	}
+	defer outputFile.Close()
+
+	parser := class.NewParser(inputFile)
+
+	codeWriter := class.NewCodeWriter(outputFile)
 
 	_, err = parser.AdvanceNextCommand()
 	if err != nil {
@@ -36,4 +45,14 @@ func main() {
 	arg2, _ := parser.Arg2()
 
 	fmt.Println("arg2 : ", arg2)
+
+	err = codeWriter.WritePushPop(commandType, arg1, arg2)
+	if err != nil {
+		panic(err)
+	}
+
+	err = codeWriter.Close()
+	if err != nil {
+		panic(err)
+	}
 }
