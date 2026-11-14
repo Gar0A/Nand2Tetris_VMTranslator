@@ -28,4 +28,12 @@ func main() {
 	commandType, _ := parser.CommandType()
 
 	fmt.Println("command type : ", commandType)
+
+	arg1, _ := parser.Arg1()
+
+	fmt.Println("arg1 : ", arg1)
+
+	arg2, _ := parser.Arg2()
+
+	fmt.Println("arg2 : ", arg2)
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // Parsers Interface for the VM code parser
@@ -92,4 +93,39 @@ func (p *Parser) CommandType() (enum.CommandType, error) {
 	}
 
 	return enum.C_UNKNOWN, fmt.Errorf("error in line %d: unknown command type : %q", p.lineCount, command)
+}
+
+func (p *Parser) Arg1() (string, error) {
+	command := p.CurrentCommand
+	commandType, err := p.CommandType()
+
+	if err != nil {
+		return "", err
+	}
+
+	if commandType == enum.C_ARITHMETIC {
+		return command, nil
+	} else if commandType != enum.C_RETURN && commandType != enum.C_UNKNOWN {
+		arg1 := strings.Fields(command)[1]
+		return arg1, nil
+	}
+
+	return "", fmt.Errorf("error in line %d: command does contain arguments : %q", p.lineCount, command)
+}
+
+func (p *Parser) Arg2() (int, error) {
+	command := p.CurrentCommand
+	commandType, err := p.CommandType()
+
+	if err != nil {
+		return -1, err
+	}
+
+	if commandType == enum.C_POP || commandType == enum.C_PUSH || commandType == enum.C_FUNCTION || commandType == enum.C_CALL {
+		arg2 := strings.Fields(command)[2]
+		n, _ := strconv.Atoi(arg2)
+		return n, nil
+	}
+
+	return -1, fmt.Errorf("error in line %d: command does not contain a second argument : %q", p.lineCount, command)
 }
