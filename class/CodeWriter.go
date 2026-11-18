@@ -5,14 +5,21 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
 // CodeWriters Interface for the VM code writer
 type CodeWriters interface {
+	SetFileName(string)
+	WriteInit() error
 	WriteArithmetic() error
 	WritePushPop(string) error
+	WriteLabel(string) error
+	WriteGoto(string) error
+	WriteIf(string) error
+	WriteFunction(string, int) error
+	WriteCall(string, int) error
+	WriteReturn(string) error
 }
 
 // CodeWriter Struct for the VM code writer
@@ -30,7 +37,22 @@ func NewCodeWriter(f *os.File) CodeWriter {
 		"gt": 0,
 		"lt": 0,
 	}
-	return CodeWriter{writer, strings.TrimSuffix(f.Name(), filepath.Ext(f.Name())), arithmeticCount}
+	return CodeWriter{writer: writer, arithmeticCount: arithmeticCount}
+}
+
+func (cw *CodeWriter) SetFileName(name string) {
+	cw.fileName = name
+}
+
+func (cw *CodeWriter) WriteInit() error {
+	_, err := cw.writer.WriteString("@SP\nM=256")
+	if err != nil {
+		return err
+	}
+
+	// TODO : add WriteCall("call Sys.init") once the implementation of the function is done
+
+	return nil
 }
 
 func (cw *CodeWriter) WritePushPop(commandType enum.CommandType, segment string, index int) error {
@@ -195,6 +217,38 @@ func (cw *CodeWriter) WriteArithmetic(command string) error {
 	}
 
 	err = cw.WritePushPop(enum.C_PUSH, "temp", 0)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cw *CodeWriter) WriteLabel(label string) error {
+	_, err := cw.writer.WriteString(fmt.Sprintf("\n(%s)", label))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cw *CodeWriter) WriteGoto(label string) error {
+	_, err := cw.writer.WriteString(fmt.Sprintf("\n@%s\n0;JMP", label))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cw *CodeWriter) WriteIf(label string) error {
+	err := cw.WritePushPop(enum.C_POP, "temp", 0)
+	if err != nil {
+		return err
+	}
+
+	_, err = cw.writer.WriteString(fmt.Sprintf("\n@R5\nD=M\n@%s\nD;JNE", label))
 	if err != nil {
 		return err
 	}
