@@ -39,6 +39,9 @@ func (p *Parser) AdvanceNextCommand() (bool, error) {
 	rPushPopTemp := regexp.MustCompile("^\\s*(pop|push)\\s+temp\\s+([0-8])(?:\\s*$|\\s+(?://+)+)")
 	rPushPopPointer := regexp.MustCompile("^\\s*(pop|push)\\s+pointer\\s+([0-1])(?:\\s*$|\\s+(?://+)+)")
 	rPushPopRest := regexp.MustCompile("^\\s*(pop|push)\\s+(local|argument|this|that|static)\\s+(\\d+)(?:\\s*$|\\s+(?://+)+)")
+	rBranching := regexp.MustCompile("^\\s*(label|goto|if-goto)\\s+(\\w+)(?:\\s*$|\\s+(?://+)+)")
+	rFunctionCall := regexp.MustCompile("^\\s*(function|call)\\s+(\\w+)\\s+(\\d+)(?:\\s*$|\\s+(?://+)+)")
+	rReturn := regexp.MustCompile("^\\s*return(?:\\s*$|\\s+(?://+)+)")
 
 	if !p.scanner.Scan() {
 		return false, nil
@@ -46,8 +49,6 @@ func (p *Parser) AdvanceNextCommand() (bool, error) {
 	p.lineCount++
 
 	line := p.scanner.Text()
-
-	line = strings.ToLower(line)
 
 	if rWhitespaceLine.MatchString(line) {
 		return p.AdvanceNextCommand()
@@ -73,6 +74,18 @@ func (p *Parser) AdvanceNextCommand() (bool, error) {
 		n, _ := strconv.Atoi(parts[3])
 		p.currentCommand = fmt.Sprintf("%s %s %d", parts[1], parts[2], n)
 		return true, nil
+	} else if rBranching.MatchString(line) {
+		parts := rBranching.FindStringSubmatch(line)
+		p.currentCommand = fmt.Sprintf("%s %s", parts[1], parts[2])
+		return true, nil
+	} else if rFunctionCall.MatchString(line) {
+		parts := rFunctionCall.FindStringSubmatch(line)
+		n, _ := strconv.Atoi(parts[3])
+		p.currentCommand = fmt.Sprintf("%s %s %d", parts[1], parts[2], n)
+		return true, nil
+	} else if rReturn.MatchString(line) {
+		p.currentCommand = "return"
+		return true, nil
 	}
 	return false, fmt.Errorf("error in line %d: unknown command : %q", p.lineCount, line)
 }
@@ -80,6 +93,8 @@ func (p *Parser) AdvanceNextCommand() (bool, error) {
 func (p *Parser) CommandType() (enum.CommandType, error) {
 	rArithmetic := regexp.MustCompile("^(?:add|sub|neg|eq|gt|lt|and|or|not)")
 	rPushPop := regexp.MustCompile("^(pop|push)")
+	rBranching := regexp.MustCompile("^(label|goto|if-goto)")
+	rFunctions := regexp.MustCompile("^(function|call|return)")
 
 	command := p.currentCommand
 
@@ -87,10 +102,31 @@ func (p *Parser) CommandType() (enum.CommandType, error) {
 		return enum.C_ARITHMETIC, nil
 	} else if rPushPop.MatchString(command) {
 		parts := rPushPop.FindStringSubmatch(command)
-		if parts[1] == "pop" {
+		switch parts[1] {
+		case "pop":
 			return enum.C_POP, nil
-		} else if parts[1] == "push" {
+		case "push":
 			return enum.C_PUSH, nil
+		}
+	} else if rBranching.MatchString(command) {
+		parts := rBranching.FindStringSubmatch(command)
+		switch parts[1] {
+		case "label":
+			return enum.C_LABEL, nil
+		case "goto":
+			return enum.C_GOTO, nil
+		case "if-goto":
+			return enum.C_IF, nil
+		}
+	} else if rFunctions.MatchString(command) {
+		parts := rFunctions.FindStringSubmatch(command)
+		switch parts[1] {
+		case "function":
+			return enum.C_FUNCTION, nil
+		case "call":
+			return enum.C_CALL, nil
+		case "return":
+			return enum.C_RETURN, nil
 		}
 	}
 
